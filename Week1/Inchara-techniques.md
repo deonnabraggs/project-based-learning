@@ -1,4 +1,4 @@
-PERSON 3 – IPC TECHNIQUES (PART 1)
+IPC TECHNIQUES (PART 1)
 1. Signals
   
 Definition:
