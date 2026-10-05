@@ -23,9 +23,6 @@ int main()
     printf("       LOGGER PROCESS STARTED       \n");
     printf("====================================\n");
 
-    /*
-     * Open Core → Logger message queue
-     */
     printf("\n[LOGGER] Opening message queue...\n");
     printf("[LOGGER] Queue: /core_to_logger\n");
 
@@ -44,15 +41,8 @@ int main()
 
     printf("[LOGGER] Message queue opened successfully\n");
 
-    /*
-     * Wait for message from Core
-     */
-    printf("\n");
-    printf("[LOGGER] Waiting for messages from Core...\n");
+    printf("\n[LOGGER] Waiting for messages from Core...\n");
 
-    /*
-     * Receive message
-     */
     ssize_t bytes_received;
 
     bytes_received = mq_receive(
@@ -67,15 +57,12 @@ int main()
         perror("[LOGGER] mq_receive");
 
         mq_close(logger_queue);
+
         exit(EXIT_FAILURE);
     }
 
-    printf("\n");
-    printf("[LOGGER] Message received from Core!\n");
+    printf("\n[LOGGER] Message received from Core!\n");
 
-    /*
-     * Display received LogMessage
-     */
     printf("\n");
     printf("====================================\n");
     printf("           LOGGER OUTPUT            \n");
@@ -95,9 +82,6 @@ int main()
 
     printf("====================================\n");
 
-    /*
-     * Close message queue
-     */
     mq_close(logger_queue);
 
     printf("\n[LOGGER] Process terminated\n");
