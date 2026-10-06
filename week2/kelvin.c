@@ -1,24 +1,32 @@
-cpu.h
-
-#ifndef CPU_H
-#define CPU_H
-
-int execute_instruction(
-    const char *instruction,
-    int value1,
-    int value2,
-    int *out_result
-);
-
-#endif
-
-
-FILE: cpu.c
-
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <mqueue.h>
 
-#include "cpu.h"
+/* ================= IPC ================= */
+
+#define UI_TO_CORE "/ui_to_core"
+#define CORE_TO_LOGGER "/core_to_logger"
+#define MAX_MESSAGE 256
+
+typedef struct
+{
+    int command;
+    int value1;
+    int value2;
+    char instruction[MAX_MESSAGE];
+} CoreMessage;
+
+typedef struct
+{
+    int status;
+    int result;
+    char message[MAX_MESSAGE];
+} LogMessage;
+
+
+/* ================= CPU ================= */
 
 int execute_instruction(
     const char *instruction,
@@ -28,9 +36,7 @@ int execute_instruction(
 )
 {
     if (out_result == NULL)
-    {
         return -1;
-    }
 
     if (strcmp(instruction, "ADD") == 0)
     {
@@ -63,39 +69,20 @@ int execute_instruction(
     }
 
     printf("[CPU] Unknown instruction: %s\n", instruction);
-
     return -1;
 }
 
 
-FILE: memory.h
-
-#ifndef MEMORY_H
-#define MEMORY_H
+/* ================= MEMORY ================= */
 
 #define MEMORY_SIZE 100
-
-void initialize_memory(void);
-void write_memory(int address, int value);
-int read_memory(int address);
-
-#endif
-
-
-FILE: memory.c
-
-#include <stdio.h>
-
-#include "memory.h"
 
 static int memory[MEMORY_SIZE];
 
 void initialize_memory(void)
 {
     for (int i = 0; i < MEMORY_SIZE; i++)
-    {
         memory[i] = 0;
-    }
 
     printf("[MEMORY] Initialized\n");
 }
@@ -116,35 +103,15 @@ void write_memory(int address, int value)
 int read_memory(int address)
 {
     if (address < 0 || address >= MEMORY_SIZE)
-    {
-        printf("[MEMORY] Invalid address\n");
         return -1;
-    }
 
     return memory[address];
 }
 
 
-FILE: stack.h
-
-#ifndef STACK_H
-#define STACK_H
+/* ================= STACK ================= */
 
 #define STACK_SIZE 50
-
-void initialize_stack(void);
-int push(int value);
-int pop(void);
-int peek(void);
-
-#endif
-
-
-FILE: stack.c
-
-#include <stdio.h>
-
-#include "stack.h"
 
 static int stack[STACK_SIZE];
 static int top = -1;
@@ -152,7 +119,6 @@ static int top = -1;
 void initialize_stack(void)
 {
     top = -1;
-
     printf("[STACK] Initialized\n");
 }
 
@@ -189,37 +155,17 @@ int pop(void)
 int peek(void)
 {
     if (top < 0)
-    {
         return -1;
-    }
 
     return stack[top];
 }
 
 
-FILE: queue.h
-
-#ifndef QUEUE_H
-#define QUEUE_H
+/* ================= QUEUE ================= */
 
 #define QUEUE_SIZE 50
 
-void initialize_queue(void);
-int enqueue(int value);
-int dequeue(void);
-int queue_empty(void);
-
-#endif
-
-
-FILE: queue.c
-
-#include <stdio.h>
-
-#include "queue.h"
-
 static int queue[QUEUE_SIZE];
-
 static int front = 0;
 static int rear = 0;
 static int count = 0;
@@ -242,9 +188,7 @@ int enqueue(int value)
     }
 
     queue[rear] = value;
-
     rear = (rear + 1) % QUEUE_SIZE;
-
     count++;
 
     printf("[QUEUE] ENQUEUE %d\n", value);
@@ -263,7 +207,6 @@ int dequeue(void)
     int value = queue[front];
 
     front = (front + 1) % QUEUE_SIZE;
-
     count--;
 
     printf("[QUEUE] DEQUEUE %d\n", value);
@@ -277,19 +220,7 @@ int queue_empty(void)
 }
 
 
-FILE: core.c
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <mqueue.h>
-
-#include "ipc.h"
-#include "cpu.h"
-#include "memory.h"
-#include "stack.h"
-#include "queue.h"
+/* ================= CORE PROCESS ================= */
 
 int main(void)
 {
@@ -308,9 +239,10 @@ int main(void)
 
     printf("\n");
     printf("====================================\n");
-    printf("         CORE PROCESS STARTED       \n");
+    printf("         CORE PROCESS STARTED\n");
     printf("====================================\n");
 
+    /* Open UI -> Core queue */
     ui_queue = mq_open(
         UI_TO_CORE,
         O_CREAT | O_RDONLY,
@@ -321,9 +253,10 @@ int main(void)
     if (ui_queue == (mqd_t)-1)
     {
         perror("[CORE] mq_open UI_TO_CORE");
-        exit(EXIT_FAILURE);
+        return 1;
     }
 
+    /* Logger queue attributes */
     struct mq_attr logger_attr;
 
     logger_attr.mq_flags = 0;
@@ -331,6 +264,7 @@ int main(void)
     logger_attr.mq_msgsize = sizeof(LogMessage);
     logger_attr.mq_curmsgs = 0;
 
+    /* Open Core -> Logger queue */
     logger_queue = mq_open(
         CORE_TO_LOGGER,
         O_CREAT | O_WRONLY,
@@ -342,15 +276,17 @@ int main(void)
     {
         perror("[CORE] mq_open CORE_TO_LOGGER");
         mq_close(ui_queue);
-        exit(EXIT_FAILURE);
+        return 1;
     }
 
+    /* Initialize Core components */
     initialize_memory();
     initialize_stack();
     initialize_queue();
 
     printf("\n[CORE] Waiting for command from UI...\n");
 
+    /* Receive message from UI */
     ssize_t bytes_received = mq_receive(
         ui_queue,
         (char *)&request,
@@ -365,7 +301,7 @@ int main(void)
         mq_close(ui_queue);
         mq_close(logger_queue);
 
-        exit(EXIT_FAILURE);
+        return 1;
     }
 
     printf("\n[CORE] Message received\n");
@@ -373,6 +309,7 @@ int main(void)
     printf("[CORE] Value 1    : %d\n", request.value1);
     printf("[CORE] Value 2    : %d\n", request.value2);
 
+    /* Execute CPU instruction */
     int calculated_result = 0;
 
     int exec_status = execute_instruction(
@@ -384,10 +321,13 @@ int main(void)
 
     if (exec_status == 0)
     {
+        /* Store result in memory */
         write_memory(0, calculated_result);
 
+        /* Push result into stack */
         push(calculated_result);
 
+        /* Add result to queue */
         enqueue(calculated_result);
 
         response.status = 0;
@@ -414,6 +354,7 @@ int main(void)
         );
     }
 
+    /* Send result to Logger */
     if (mq_send(
             logger_queue,
             (const char *)&response,
