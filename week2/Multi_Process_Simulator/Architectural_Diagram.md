@@ -1,4 +1,4 @@
-````markdown
+
 # Multi-Process Simulator - Architectural Diagram
 
 ## 1. System Architecture
