@@ -1,4 +1,4 @@
-Inter-Process Communication (IPC) – Techniques
+Inter-Process Communication (IPC) – Techniques (PART-2)
 
 5. Sockets
 
