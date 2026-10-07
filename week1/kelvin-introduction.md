@@ -26,11 +26,11 @@ Main reasons for IPC:
 3. Why Do Processes Communicate?
 Processes communicate when one process needs information or a service from another process.
 For example, consider a web browser:
-1. The browser requests a webpage.
-2. A network-related process handles the request.
-3. The network process receives the webpage data.
-4. The data is communicated back to the browser process.
-5. The browser displays the webpage.
+The browser requests a webpage.
+A network-related process handles the request.
+The network process receives the webpage data.
+The data is communicated back to the browser process.
+The browser displays the webpage.
 Thus, communication allows different processes to cooperate and complete a common task.
 4. How Do Processes Communicate?
 There are two basic approaches to IPC:
