@@ -1,8 +1,8 @@
 INTRODUCTION TO INTER-PROCESS COMMUNICATION (IPC)
 
 1. What is Inter-Process Communication (IPC)?
-Inter-Process Communication (IPC) is a set of mechanisms provided by an operating system that allows two or more processes to communicate and exchange data with each other.
-A process is a program that is currently running. Since processes normally have separate memory spaces, one process cannot directly access another process's data. IPC provides safe and controlled methods for processes to share information, coordinate activities, and synchronize their execution.
+    Inter-Process Communication (IPC) is a set of mechanisms provided by an operating system that allows two or more processes to communicate and exchange data with each other.
+    A process is a program that is currently running. Since processes normally have separate memory spaces, one process cannot directly access another process's data. IPC provides safe and controlled methods for processes to share information, coordinate activities, and synchronize their execution.
 Example: A web browser process may communicate with another process that handles network operations.
 The two important purposes of IPC are:
 • Data exchange – transferring information from one process to another.
