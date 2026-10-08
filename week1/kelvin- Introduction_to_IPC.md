@@ -1,6 +1,6 @@
-#INTRODUCTION TO INTER-PROCESS COMMUNICATION (IPC)
+INTRODUCTION TO INTER-PROCESS COMMUNICATION (IPC)
 
-##1.	Inter-Process Communication (IPC)
+1.	Inter-Process Communication (IPC)
 Inter-Process Communication (IPC) is a set of mechanisms provided by an operating system that allows two or more processes to communicate and exchange data with each other.
 A process is a program that is currently running. Since processes normally have separate memory spaces, one process cannot directly access another process's data. IPC provides safe and controlled methods for processes to share information, coordinate activities, and synchronize their execution.
 Example: A web browser process may communicate with another process that handles network operations.
@@ -15,7 +15,7 @@ Common IPC mechanisms include:
 5.	Signals
 6.	Semaphores
 
-##2. Need for IPC
+2. Need for IPC
 IPC is needed because modern operating systems run many processes simultaneously, and these processes often need to work together.
 Main reasons for IPC:
 -	Sharing data: Processes may need to exchange information.
@@ -26,7 +26,7 @@ Main reasons for IPC:
 -	Client-server communication: Clients can request services from server processes.
 
 
-##3. Processes Communicate
+3. Processes Communicate
 Processes communicate when one process needs information or a service from another process.
 For example, consider a web browser:
 -	The browser requests a webpage.
@@ -36,12 +36,12 @@ For example, consider a web browser:
 -	The browser displays the webpage.
 Thus, communication allows different processes to cooperate and complete a common task.
 
-##4. How Do Processes Communicate?
+4. How Do Processes Communicate?
 There are two basic approaches to IPC:
 A.	Shared Memory: In shared memory, two or more processes access a common memory area.
 B.	Message Passing: In message passing, processes communicate by sending and receiving messages.
 
-##5. Basic Client-Server Concept
+5. Basic Client-Server Concept
 The client-server model is an important application of IPC.
 -	Client: Requests a service or information.
 -	Server: Provides the requested service or information.
