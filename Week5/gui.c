@@ -257,17 +257,6 @@ static void add_css(void)
 
         "label { color: #e8eef8; }"
 
-        /* UPDATED VISIBLE TOP HEADING */
-        "label.main-heading {"
-        " color: #ffffff;"
-        " background-color: #172554;"
-        " background-image: none;"
-        " font-size: 24px;"
-        " font-weight: bold;"
-        " padding: 10px;"
-        " border-radius: 8px;"
-        "}"
-
         "label.title {"
         " color: #ffffff;"
         " font-size: 27px;"
@@ -458,20 +447,6 @@ GtkWidget *create_main_window(void)
     gtk_container_set_border_width(GTK_CONTAINER(outer), 18);
     gtk_container_add(GTK_CONTAINER(window), outer);
 
-    /* NEW: visible heading inside the application window */
-    GtkWidget *main_heading =
-        gtk_label_new("PAGE REPLACEMENT SIMULATOR");
-
-    gtk_widget_set_halign(main_heading, GTK_ALIGN_FILL);
-    gtk_widget_set_hexpand(main_heading, TRUE);
-    gtk_label_set_xalign(GTK_LABEL(main_heading), 0.5);
-
-    gtk_style_context_add_class(
-        gtk_widget_get_style_context(main_heading), "main-heading");
-
-    gtk_box_pack_start(
-        GTK_BOX(outer), main_heading, FALSE, FALSE, 0);
-
     gtk_box_pack_start(
         GTK_BOX(outer), make_label("MEMORY LAB", "title"),
         FALSE, FALSE, 0);
@@ -514,7 +489,6 @@ GtkWidget *create_main_window(void)
         FALSE, FALSE, 0);
 
     algorithm_combo = gtk_combo_box_text_new();
-
     gtk_combo_box_text_append_text(
         GTK_COMBO_BOX_TEXT(algorithm_combo), "Select an algorithm...");
     gtk_combo_box_text_append_text(
