@@ -1,132 +1,30 @@
 
-# IPC Techniques
+# IPC Techniques Used
 
 ## 1. Overview
 
-The Multi-Process Simulator uses **Inter-Process Communication (IPC)** to enable communication between three independent processes:
+Inter-Process Communication (IPC) allows independent processes to exchange data. Our Multi-Process Simulator uses three IPC techniques to communicate between the UI, Core, and Logger processes.
 
-- **UI Process**
-- **Core Process**
-- **Logger Process**
+## 2. IPC Techniques
 
-The IPC technique implemented in this project is **POSIX Message Queues**.
+### 2.1 Unix Domain Socket
 
----
+A Unix Domain Socket transfers operation requests from the UI Process to the Core Process. It sends the selected command and input values for processing.
 
-## 2. POSIX Message Queues
+**Communication:** UI → Core
 
-POSIX Message Queues are used to exchange commands, results and execution information between the processes.
+### 2.2 POSIX Message Queue
 
-The implementation uses:
+A POSIX Message Queue transfers the operation result and response from the Core Process back to the UI Process. The UI receives the response and displays it to the user.
 
-```c
-#include <mqueue.h>
-````
+**Communication:** Core → UI
 
-The project uses three message queues:
+### 2.3 FIFO (Named Pipe)
 
-| Message Queue    | Communication | Purpose                               |
-| ---------------- | ------------- | ------------------------------------- |
-| `UI_TO_CORE`     | UI → Core     | Sends commands and input values       |
-| `CORE_TO_UI`     | Core → UI     | Sends operation results to UI         |
-| `CORE_TO_LOGGER` | Core → Logger | Sends execution information to Logger |
+A FIFO transfers execution log messages from the Core Process to the Logger Process. The Logger receives and displays information about the operations performed.
 
----
+**Communication:** Core → Logger
 
-## 3. IPC Communication Flow
+## 3. Conclusion
 
-```text
-                 UI PROCESS
-                     |
-                     | UI_TO_CORE
-                     v
-                CORE PROCESS
-                 /         \
-                /           \
-               v             v
-         CORE_TO_UI    CORE_TO_LOGGER
-              |              |
-              v              v
-         UI PROCESS    LOGGER PROCESS
-```
-
-The UI Process sends commands to the Core Process.
-
-The Core Process performs the requested CPU, Memory, Stack or Queue operation.
-
-The Core Process sends the result back to the UI and sends execution information to the Logger.
-
----
-
-## 4. Message Structures
-
-### CoreMessage
-
-`CoreMessage` is used to send commands and input values from the UI Process to the Core Process.
-
-```c
-typedef struct
-{
-    int command;
-    int value1;
-    int value2;
-    char instruction[MAX_MESSAGE];
-} CoreMessage;
-```
-
-### LogMessage
-
-`LogMessage` is used by the Core Process to send status and result information.
-
-```c
-typedef struct
-{
-    int status;
-    int result;
-    char message[MAX_MESSAGE];
-} LogMessage;
-```
-
----
-
-## 5. IPC Functions Used
-
-| Function       | Purpose                          |
-| -------------- | -------------------------------- |
-| `mq_open()`    | Opens or creates a message queue |
-| `mq_send()`    | Sends a message                  |
-| `mq_receive()` | Receives a message               |
-| `mq_close()`   | Closes a message queue           |
-| `mq_unlink()`  | Removes a named message queue    |
-
----
-
-## 6. Advantages of POSIX Message Queues
-
-POSIX Message Queues were selected because they provide:
-
-* Communication between independent processes
-* Structured message-based communication
-* Clear process separation
-* Reliable transfer of commands and results
-* Suitable communication for the multi-process architecture
-
----
-
-## 7. Conclusion
-
-The Multi-Process Simulator successfully implements **POSIX Message Queues** as its IPC technique.
-
-The implemented communication is:
-
-**UI → Core → UI**
-
-and
-
-**Core → Logger**
-
-This allows the UI, Core and Logger processes to communicate while remaining independent processes.
-
-```
-```
-
+The Multi-Process Simulator uses Unix Domain Sockets, POSIX Message Queues, and FIFO to enable communication between its independent processes. Each technique has a specific role in transferring requests, returning results, and recording execution logs.
