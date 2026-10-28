@@ -1,77 +1,71 @@
 
-# Multi-Process Simulator - Architectural Diagram
+# Multi-Process Simulator – Architectural Diagram
 
-## 1. System Architecture
+## Architecture Overview
 
-The simulator consists of three independent processes:
+The Multi-Process Simulator consists of three independent processes: UI, Core, and Logger. The processes communicate using Unix Domain Sockets, POSIX Message Queues, and FIFOs.
 
-- **UI Process** – accepts user commands and displays results.
-- **Core Process** – performs CPU, Memory, Stack and Queue operations.
-- **Logger Process** – receives and displays execution information.
+- **UI Process:** Accepts user input, sends operation requests, and displays results.
+- **Core Process:** Executes operations and manages CPU execution, memory, stack, and queue.
+- **Logger Process:** Receives and displays execution log messages.
 
-The processes communicate using **POSIX Message Queues**.
-
-## 2. Architectural Diagram
+## Architecture Diagram
 
 ```text
-                         USER
-                          |
-                          v
-                 +------------------+
-                 |    UI PROCESS    |
-                 |------------------|
-                 | User Input       |
-                 | Command Selection|
-                 +--------+---------+
-                          |
-                          | UI_TO_CORE
-                          | CoreMessage
-                          v
-                 +------------------+
-                 |   CORE PROCESS   |
-                 |------------------|
-                 | CPU              |
-                 | Memory           |
-                 | Stack            |
-                 | Queue            |
-                 +----+--------+----+
-                      |        |
-          CORE_TO_UI  |        | CORE_TO_LOGGER
-          LogMessage  |        | LogMessage
-                      v        v
-              +--------+--+  +------------------+
-              | UI PROCESS |  | LOGGER PROCESS  |
-              |------------|  |-----------------|
-              | Display    |  | Status / Result |
-              | Result     |  | Execution Log   |
-              +------------+  +------------------+
-````
-
-## 3. IPC Communication
-
-| Message Queue    | Direction     | Purpose                             |
-| ---------------- | ------------- | ----------------------------------- |
-| `UI_TO_CORE`     | UI → Core     | Sends commands and input values     |
-| `CORE_TO_UI`     | Core → UI     | Sends operation results             |
-| `CORE_TO_LOGGER` | Core → Logger | Sends status and result information |
-
-### Communication Flow
-
-1. The **UI Process** receives a command from the user.
-2. The command is sent to the **Core Process** using `UI_TO_CORE`.
-3. The **Core Process** performs the required CPU, Memory, Stack or Queue operation.
-4. The result is sent back to the **UI Process** using `CORE_TO_UI`.
-5. The Core also sends execution information to the **Logger Process** using `CORE_TO_LOGGER`.
-
-## 4. Core Components
-
-* **CPU:** ADD, SUBTRACT, MULTIPLY, DIVIDE
-* **Memory:** STORE, LOAD
-* **Stack:** PUSH, POP, PEEK
-* **Queue:** ENQUEUE, DEQUEUE, QUEUE PEEK
-
-**IPC Technique:** POSIX Message Queues
+                            USER
+                              |
+                              v
+                 +--------------------------+
+                 |        UI PROCESS        |
+                 |--------------------------|
+                 | User Input               |
+                 | Command Selection        |
+                 | Send Requests            |
+                 | Display Results          |
+                 +------------+-------------+
+                              |
+                              | Unix Domain Socket
+                              | Operation Request
+                              v
+                 +--------------------------+
+                 |       CORE PROCESS       |
+                 |--------------------------|
+                 | CPU / Instruction        |
+                 | Execution                |
+                 | Memory Management        |
+                 | Stack Management         |
+                 | Queue Management         |
+                 | Operation Processing     |
+                 +------------+-------------+
+                              |
+                   +----------+----------+
+                   |                     |
+                   | POSIX Message Queue | FIFO / Named Pipe
+                   | Response / Result   | Execution Logs
+                   v                     v
+       +--------------------------+  +--------------------------+
+       |        UI PROCESS        |  |      LOGGER PROCESS      |
+       |--------------------------|  |--------------------------|
+       | Receive Response         |  | Receive Log Messages     |
+       | Display Status           |  | Display Operation        |
+       | Display Result           |  | Status and Details       |
+       +--------------------------+  +--------------------------+
 
 ```
-```
 
+## Working Flow
+
+1. The user selects an operation and enters the required input through the UI.
+2. The UI sends the request to the Core Process using a Unix Domain Socket.
+3. The Core Process executes the requested operation using its CPU, memory, stack, or queue components.
+4. The Core Process sends the response to the UI through a POSIX Message Queue.
+5. The Core Process sends execution logs to the Logger Process through a FIFO (Named Pipe).
+6. The UI displays the result, while the Logger displays execution details.
+
+## IPC Mechanisms
+
+| IPC Mechanism | Communication | Purpose |
+|---|---|---|
+| Unix Domain Socket | UI → Core | Transfers operation requests |
+| POSIX Message Queue | Core → UI | Returns responses and results |
+| FIFO (Named Pipe) | Core → Logger | Transfers execution logs |
