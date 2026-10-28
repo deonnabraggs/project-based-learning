@@ -1,284 +1,138 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <mqueue.h>
+#define _POSIX_C_SOURCE 200809L
 
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <mqueue.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include "ipc.h"
+
+static int read_number(const char *prompt, int *value)
+{
+    printf("%s", prompt);
+    fflush(stdout);
+
+    if (scanf("%d", value) != 1) {
+        int ch;
+        while ((ch = getchar()) != '\n' && ch != EOF) {}
+        printf("Invalid input. Enter a number.\n");
+        return 0;
+    }
+    return 1;
+}
+
+static int send_request(int fd, const Request *r)
+{
+    const char *p = (const char *)r;
+    size_t left = sizeof(*r);
+
+    while (left) {
+        ssize_t n = send(fd, p, left, 0);
+        if (n < 0) return -1;
+        if (n == 0) return -1;
+        p += n;
+        left -= (size_t)n;
+    }
+    return 0;
+}
 
 int main(void)
 {
-    mqd_t ui_to_core;
-    mqd_t core_to_ui;
+    int sock;
+    struct sockaddr_un addr;
+    mqd_t mq;
+    Request req;
+    Response res;
 
-    CoreMessage request;
-    LogMessage response;
-
-    struct mq_attr core_attr;
-    struct mq_attr response_attr;
-
-    /* UI -> Core queue */
-    core_attr.mq_flags = 0;
-    core_attr.mq_maxmsg = 10;
-    core_attr.mq_msgsize = sizeof(CoreMessage);
-    core_attr.mq_curmsgs = 0;
-
-    /* Core -> UI queue */
-    response_attr.mq_flags = 0;
-    response_attr.mq_maxmsg = 10;
-    response_attr.mq_msgsize = sizeof(LogMessage);
-    response_attr.mq_curmsgs = 0;
-
-    printf("\n");
-    printf("====================================\n");
-    printf("          UI PROCESS STARTED\n");
-    printf("====================================\n");
-
-    /* Open UI -> Core queue */
-    ui_to_core = mq_open(
-        UI_TO_CORE,
-        O_CREAT | O_WRONLY,
-        0666,
-        &core_attr
-    );
-
-    if (ui_to_core == (mqd_t)-1)
-    {
-        perror("[UI] mq_open UI_TO_CORE");
+    /* Core must be started first so this queue already exists. */
+    mq = mq_open(MQ_NAME, O_RDONLY);
+    if (mq == (mqd_t)-1) {
+        perror("UI: mq_open (start Core first)");
         return 1;
     }
 
-    /* Open Core -> UI queue */
-    core_to_ui = mq_open(
-        CORE_TO_UI,
-        O_CREAT | O_RDONLY,
-        0666,
-        &response_attr
-    );
-
-    if (core_to_ui == (mqd_t)-1)
-    {
-        perror("[UI] mq_open CORE_TO_UI");
-        mq_close(ui_to_core);
+    sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock == -1) {
+        perror("UI: socket");
+        mq_close(mq);
         return 1;
     }
 
-    printf("[UI] Message queues opened successfully\n");
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", SOCKET_PATH);
 
-    while (1)
-    {
-        memset(&request, 0, sizeof(request));
-
-        printf("\n");
-        printf("====================================\n");
-        printf("       MULTI-PROCESS SIMULATOR\n");
-        printf("====================================\n");
-
-        printf("1. ADD\n");
-        printf("2. SUBTRACT\n");
-        printf("3. MULTIPLY\n");
-        printf("4. DIVIDE\n");
-        printf("5. STORE\n");
-        printf("6. LOAD\n");
-        printf("7. PUSH\n");
-        printf("8. POP\n");
-        printf("9. PEEK\n");
-        printf("10. ENQUEUE\n");
-        printf("11. DEQUEUE\n");
-        printf("12. QUEUE PEEK\n");
-        printf("13. EXIT\n");
-
-        printf("\nEnter your choice: ");
-
-        if (scanf("%d", &request.command) != 1)
-        {
-            printf("[UI] Invalid input.\n");
-
-            while (getchar() != '\n')
-                ;
-
-            continue;
-        }
-
-        /* EXIT */
-        if (request.command == 13)
-        {
-            strcpy(request.instruction, "EXIT");
-
-            if (mq_send(
-                    ui_to_core,
-                    (const char *)&request,
-                    sizeof(CoreMessage),
-                    0) == -1)
-            {
-                perror("[UI] mq_send EXIT");
-            }
-            else
-            {
-                printf("\n[UI] EXIT command sent to Core\n");
-
-                /* Wait for Core confirmation */
-                if (mq_receive(
-                        core_to_ui,
-                        (char *)&response,
-                        sizeof(LogMessage),
-                        NULL) != -1)
-                {
-                    printf("[UI] Core Response: %s\n", response.message);
-                }
-            }
-
-            break;
-        }
-
-        /* Check valid command */
-        if (request.command < 1 || request.command > 13)
-        {
-            printf("[UI] Invalid choice.\n");
-            continue;
-        }
-
-        /* CPU operations */
-        if (request.command >= 1 && request.command <= 4)
-        {
-            if (request.command == 1)
-                strcpy(request.instruction, "ADD");
-
-            else if (request.command == 2)
-                strcpy(request.instruction, "SUB");
-
-            else if (request.command == 3)
-                strcpy(request.instruction, "MUL");
-
-            else
-                strcpy(request.instruction, "DIV");
-
-            printf("Enter value 1: ");
-            scanf("%d", &request.value1);
-
-            printf("Enter value 2: ");
-            scanf("%d", &request.value2);
-        }
-
-        /* STORE */
-        else if (request.command == 5)
-        {
-            strcpy(request.instruction, "STORE");
-
-            printf("Enter memory address: ");
-            scanf("%d", &request.value1);
-
-            printf("Enter value: ");
-            scanf("%d", &request.value2);
-        }
-
-        /* LOAD */
-        else if (request.command == 6)
-        {
-            strcpy(request.instruction, "LOAD");
-
-            printf("Enter memory address: ");
-            scanf("%d", &request.value1);
-        }
-
-        /* PUSH */
-        else if (request.command == 7)
-        {
-            strcpy(request.instruction, "PUSH");
-
-            printf("Enter value: ");
-            scanf("%d", &request.value1);
-        }
-
-        /* POP */
-        else if (request.command == 8)
-        {
-            strcpy(request.instruction, "POP");
-        }
-
-        /* PEEK */
-        else if (request.command == 9)
-        {
-            strcpy(request.instruction, "PEEK");
-        }
-
-        /* ENQUEUE */
-        else if (request.command == 10)
-        {
-            strcpy(request.instruction, "ENQUEUE");
-
-            printf("Enter value: ");
-            scanf("%d", &request.value1);
-        }
-
-        /* DEQUEUE */
-        else if (request.command == 11)
-        {
-            strcpy(request.instruction, "DEQUEUE");
-        }
-
-        /* QUEUE PEEK */
-        else if (request.command == 12)
-        {
-            strcpy(request.instruction, "QUEUE_PEEK");
-        }
-
-        printf("\n");
-        printf("====================================\n");
-        printf("             UI COMMAND\n");
-        printf("====================================\n");
-
-        printf("Instruction : %s\n", request.instruction);
-        printf("Value 1     : %d\n", request.value1);
-        printf("Value 2     : %d\n", request.value2);
-
-        /* Send command to Core */
-        if (mq_send(
-                ui_to_core,
-                (const char *)&request,
-                sizeof(CoreMessage),
-                0) == -1)
-        {
-            perror("[UI] mq_send");
-            break;
-        }
-
-        printf("\n[UI] Command sent to Core successfully\n");
-
-        /* Wait for Core response */
-        if (mq_receive(
-                core_to_ui,
-                (char *)&response,
-                sizeof(LogMessage),
-                NULL) == -1)
-        {
-            perror("[UI] mq_receive");
-            break;
-        }
-
-        printf("\n");
-        printf("====================================\n");
-        printf("            CORE RESPONSE\n");
-        printf("====================================\n");
-
-        if (response.status == 0)
-            printf("Status  : SUCCESS\n");
-        else
-            printf("Status  : ERROR\n");
-
-        printf("Message : %s\n", response.message);
-
-        if (response.result != -999999)
-            printf("Result  : %d\n", response.result);
-
-        printf("====================================\n");
+    if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        perror("UI: connect (start Core first)");
+        close(sock);
+        mq_close(mq);
+        return 1;
     }
 
-    mq_close(ui_to_core);
-    mq_close(core_to_ui);
+    printf("UI: Connected to Core.\n");
 
-    printf("\n[UI] Process terminated\n");
+    while (1) {
+        printf("\n====== MULTI-PROCESS SIMULATOR ======\n");
+        printf("1. Add\n2. Subtract\n3. Multiply\n4. Divide\n");
+        printf("5. Stack Push\n6. Stack Pop\n");
+        printf("7. Queue Enqueue\n8. Queue Dequeue\n");
+        printf("9. Memory Store\n10. Memory Load\n");
+        printf("11. Stack Peek\n12. Queue Peek\n13. Exit\n");
+        printf("=====================================\n");
 
+        if (!read_number("Select an option: ", &req.option))
+            continue;
+
+        if (req.option < 1 || req.option > 13) {
+            printf("Choose an option from 1 to 13.\n");
+            continue;
+        }
+
+        req.value1 = 0;
+        req.value2 = 0;
+
+        if (req.option >= 1 && req.option <= 4) {
+            if (!read_number("Enter first number: ", &req.value1) ||
+                !read_number("Enter second number: ", &req.value2))
+                continue;
+        } else if (req.option == 5 || req.option == 7) {
+            if (!read_number("Enter value: ", &req.value1))
+                continue;
+        } else if (req.option == 9) {
+            if (!read_number("Enter memory index (0-9): ", &req.value1) ||
+                !read_number("Enter value to store: ", &req.value2))
+                continue;
+        } else if (req.option == 10) {
+            if (!read_number("Enter memory index (0-9): ", &req.value1))
+                continue;
+        }
+
+        /* IPC 1: UI -> Core using Unix Domain Socket */
+        if (send_request(sock, &req) == -1) {
+            perror("UI: send");
+            break;
+        }
+
+        /* IPC 2: Core -> UI using POSIX Message Queue */
+        if (mq_receive(mq, (char *)&res, sizeof(res), NULL) == -1) {
+            perror("UI: mq_receive");
+            break;
+        }
+
+        printf("\n------------- RESULT -------------\n");
+        printf("Status : %s\n", res.status ? "SUCCESS" : "ERROR");
+        printf("Message: %s\n", res.message);
+        printf("Result : %d\n", res.result);
+        printf("----------------------------------\n");
+
+        if (req.option == 13)
+            break;
+    }
+
+    close(sock);
+    mq_close(mq);
+    printf("UI: Exiting.\n");
     return 0;
 }
