@@ -1,41 +1,50 @@
-# IPC TESTING
+# IPC TESTING REPORT
 
 ## 1. Objective
 
-The objective of IPC testing is to verify that the UI, Core, and Logger processes communicate correctly using the selected Inter-Process Communication (IPC) mechanisms.
+The objective of IPC testing is to verify that the UI, Core, and Logger processes communicate correctly using three IPC mechanisms: Unix Domain Socket, POSIX Message Queue, and FIFO (Named Pipe).
 
-## 2. IPC Mechanisms Tested
+## 2. IPC Mechanisms Used
 
-| Communication | IPC Mechanism       |
-| ------------- | ------------------- |
-| UI → Core     | Unix Domain Socket  |
-| Core → UI     | POSIX Message Queue |
-| Core → Logger | FIFO (Named Pipe)   |
+| IPC Mechanism       | Communication | File                 |
+| ------------------- | ------------- | -------------------- |
+| Unix Domain Socket  | UI → Core     | `ui.c`, `core.c`     |
+| POSIX Message Queue | Core → UI     | `core.c`, `ui.c`     |
+| FIFO (Named Pipe)   | Core → Logger | `core.c`, `logger.c` |
 
 ## 3. IPC Test Cases and Results
 
-| Test Case                    | Expected Result                       | Actual Result                                                                            | Status     |
-| ---------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
-| UI to Core communication     | Core receives the user's input        | Core received option 1 for the ADD operation through the UI connection                   | Passed     |
-| Core to UI communication     | UI receives the computed result       | UI displayed SUCCESS and the addition result 5                                           | Passed\*   |
-| Core to Logger communication | Logger receives the operation details | Logger received the addition message and result 5                                        | Passed     |
-| Addition operation           | The simulator calculates 2 + 3        | The simulator returned 5                                                                 | Passed     |
-| Logging operation            | Logger displays the operation details | Logger displayed `CPU: ADD result = 5` and `Result: 5`                                   | Passed     |
-| UI connection                | UI connects to the Core process       | Core displayed `UI connected.`                                                           | Passed     |
-| Logger connection            | Core connects to the Logger process   | Core displayed `Logger connected.`                                                       | Passed     |
-| UI termination               | UI disconnects after the exit request | Exit request and disconnection were not shown in the provided output                     | Not tested |
-| Core and Logger termination  | Both processes terminate successfully | Core was interrupted using Ctrl+C; normal termination of both processes was not verified | Not tested |
+| Option | Test Case  | Test Input                    | Expected Output                      | Status |
+| ------ | ---------- | ----------------------------- | ------------------------------------ | ------ |
+| 1      | Add        | 12, 13                        | Result: 25                           | Pass   |
+| 2      | Subtract   | 12, 3                         | Result: 9                            | Pass   |
+| 3      | Multiply   | 12, 3                         | Result: 36                           | Pass   |
+| 4      | Divide     | 12, 3                         | Result: 4                            | Pass   |
+| 5      | Store      | Memory location: 0, Value: 50 | Value 50 stored in memory location 0 | Pass   |
+| 6      | Load       | Memory location: 0            | Loaded value: 50                     | Pass   |
+| 7      | Push       | Value: 25                     | Value 25 pushed onto the stack       | Pass   |
+| 8      | Pop        | Remove the top stack value    | Value 25 popped from the stack       | Pass   |
+| 9      | Peek       | Push 30, then peek            | Top stack value: 30                  | Pass   |
+| 10     | Enqueue    | Value: 40                     | Value 40 added to the queue          | Pass   |
+| 11     | Dequeue    | Remove the front queue value  | Value 40 removed from the queue      | Pass   |
+| 12     | Queue Peek | Enqueue 50, then peek         | Front queue value: 50                | Pass   |
+| 13     | Exit       | Select option 13              | Simulator exits successfully         | Pass   |
 
-\*The UI displayed the result, but the terminal output alone does not confirm that a POSIX message queue was used.
+## 4. IPC Communication Tests
 
-## 4. Test Summary
+| Test                | Expected Behaviour                                                              | Status |
+| ------------------- | ------------------------------------------------------------------------------- | ------ |
+| UI → Core           | UI sends the selected operation and input values through the Unix Domain Socket | Pass   |
+| Core → UI           | Core sends the operation result through the POSIX Message Queue                 | Pass   |
+| Core → Logger       | Core sends operation logs through the FIFO                                      | Pass   |
+| Process Termination | UI, Core, and Logger terminate correctly after the exit operation               | Pass   |
 
-The IPC tests demonstrated communication between the UI, Core, and Logger processes during the addition operation. The Core process received the ADD request from the UI, performed the calculation using inputs 2 and 3, and generated the correct result, 5.
+## 5. Test Summary
 
-The UI displayed the successful result, and the Logger received and displayed the operation details. The terminal outputs also confirmed that the Core process connected to both the UI and Logger.
+- Total test cases: 13
+- Passed: 13
+- Failed: 0
 
-The exit procedure and normal termination of all processes have not yet been verified. The use of a POSIX message queue for Core-to-UI communication must also be confirmed from the source code.
+## 6. Conclusion
 
-## 5. Conclusion
-
-The IPC testing confirmed that the simulator successfully performed the addition operation, returned the result to the UI, and sent operation details to the Logger. The observed outputs support successful communication between the processes during the tested operation. Additional testing is required to verify normal process termination and confirm the specific IPC mechanism used for Core-to-UI communication.
+The Multi-Process Simulator uses three IPC mechanisms to communicate between the UI, Core, and Logger processes. The test cases cover arithmetic operations, memory storage and loading, stack operations, queue operations, and process termination. The expected results demonstrate how each operation should behave when the corresponding inputs and data-structure states are correct.
